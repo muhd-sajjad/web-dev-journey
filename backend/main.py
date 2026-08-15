@@ -7,7 +7,7 @@ from typing import List
 import models
 import schemas
 from database import engine, SessionLocal
-
+import auth
 app = FastAPI()
 
 # Creates the database tables when the app starts
@@ -88,3 +88,48 @@ def deleteexpense(expense_id:int,db:Session = Depends(get_db)):
     db.delete(db_expense)
     db.commit()
     return {"message": "Expense deleted successfully"}
+
+@app.post("/auth/register")
+def postregister(user:schemas.UserCreate,db: Session = Depends(get_db)):
+    existing_user = db.query(models.User).filter(models.User.email == user.email).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+
+    hashed_password = auth.make_hashed_password(user.password)
+
+    new_user = models.User(
+        name=user.name,
+        email=user.email,
+        hashed_password=hashed_password
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return 
+
+@app.post("/auth/login")
+def postlogin(user: schemas.UserLogin,db: Session = Depends(get_db)):
+    existing_user = db.query(models.User).filter(models.User.email == user.email).first()
+
+    if not existing_user:
+        raise HTTPException(status_code=401,detail="Invalid email or password")
+
+    userthere = auth.verify_password(user.password,existing_user.hashed_password)
+
+    if not userthere:
+        raise HTTPException(status_code=401,detail="Invalid email or password")
+
+    return {"message": "Login successful",
+  "user": {
+    "id": existing_user.id,
+    "name": existing_user.name,
+    "email": existing_user.email
+  }
+}
+    
