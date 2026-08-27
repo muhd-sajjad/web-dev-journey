@@ -1,6 +1,15 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.tsx";
 
 function AppLayout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate("/login");
+  }
+
   return (
     <div className="app">
       <nav className="navbar">
@@ -10,6 +19,13 @@ function AppLayout() {
           <NavLink to="/">Dashboard</NavLink>
           <NavLink to="/add-expense">Add Expense</NavLink>
           <NavLink to="/reports">Reports</NavLink>
+        </div>
+
+        <div className="user-row">
+          <span className="user-pill">{user?.name}</span>
+          <button className="secondary-btn" onClick={handleLogout}>
+            Logout
+          </button>
         </div>
       </nav>
 
