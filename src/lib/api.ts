@@ -116,3 +116,15 @@ export async function deleteExpense(id: number): Promise<void> {
     throw new Error(message);
   }
 }
+export async function updateExpense(
+  id: number,
+  expense: ExpenseInput
+): Promise<Expense> {
+  const response = await fetch(`${API_BASE_URL}/expenses/${id}`, {
+    method: "PUT",
+    headers: getAuthHeaders(true),
+    body: JSON.stringify(expense)
+  });
+
+  return handleResponse<Expense>(response);
+}

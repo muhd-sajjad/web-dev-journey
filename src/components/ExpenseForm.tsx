@@ -10,19 +10,29 @@ const categoryChoices = [
   "Education",
   "Entertainment"
 ];
-import type { Expense } from "../types/expense.ts";
-interface expenseformprops{
-  onAddExpense: (newExpense: ExpenseInput) => void | Promise<void>;
-}
-function ExpenseForm({ onAddExpense }:expenseformprops) {
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [date, setDate] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  function validateForm() {
-    const newErrors: Record<string, string> = {};
+interface ExpenseFormProps {
+  onAddExpense: (newExpense: ExpenseInput) => void | Promise<void>;
+  initialValues?: ExpenseInput;
+  submitLabel?: string;
+}
+
+function ExpenseForm({
+  onAddExpense,
+  initialValues,
+  submitLabel = "Add Expense"
+}: ExpenseFormProps) {
+  const [title, setTitle] = useState(initialValues?.title ?? "");
+  const [amount, setAmount] = useState(
+    initialValues ? String(initialValues.amount) : ""
+  );
+  const [category, setCategory] = useState(initialValues?.category ?? "");
+  const [date, setDate] = useState(initialValues?.date ?? "");
+  const [errors, setErrors] = useState<ExpenseFormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  function validateForm(): ExpenseFormErrors {
+    const newErrors: ExpenseFormErrors = {};
 
     if (!title.trim()) {
       newErrors.title = "Title is required";
@@ -47,7 +57,7 @@ function ExpenseForm({ onAddExpense }:expenseformprops) {
     return newErrors;
   }
 
-  function handleSubmit(event:React.FormEvent ) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const validationErrors = validateForm();
@@ -57,25 +67,30 @@ function ExpenseForm({ onAddExpense }:expenseformprops) {
       return;
     }
 
-    const newExpense = {
+    const newExpense: ExpenseInput = {
       title: title.trim(),
       amount: Number(amount),
       category,
       date
     };
 
-    onAddExpense(newExpense);
+    try {
+      setSubmitting(true);
+      await onAddExpense(newExpense);
 
-    setTitle("");
-    setAmount("");
-    setCategory("");
-    setDate("");
-    setErrors({});
+      setTitle("");
+      setAmount("");
+      setCategory("");
+      setDate("");
+      setErrors({});
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <form className="expense-form" onSubmit={handleSubmit}>
-      <h2>Add New Expense</h2>
+      <h2>{submitLabel === "Save Changes" ? "Edit Expense" : "Add New Expense"}</h2>
 
       <div className="field">
         <label>Title</label>
@@ -125,7 +140,9 @@ function ExpenseForm({ onAddExpense }:expenseformprops) {
         {errors.date && <p className="error-text">{errors.date}</p>}
       </div>
 
-      <button type="submit">Add Expense</button>
+      <button type="submit" disabled={submitting}>
+        {submitting ? "Saving..." : submitLabel}
+      </button>
     </form>
   );
 }

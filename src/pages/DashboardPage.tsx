@@ -1,27 +1,40 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import SummaryCard from "../components/summarycard.tsx";
 import ExpenseCard from "../components/ExpenseCard.tsx";
-import type {Expense} from "../types/expense.ts";
+import type { Expense, SortBy } from "../types/expense.ts";
 import {
   getCategoryOptions,
   filterExpenses,
   sortExpenses,
   getExpenseSummary
-} from "../utils/expenseHelpers.js";
+} from "../utils/expenseHelpers.ts";
+
 interface DashboardPageProps {
   expenses: Expense[];
-  onDeleteExpense: (id:number) => void;
+  onDeleteExpense: (id: number) => void | Promise<void>;
 }
-function DashboardPage({ expenses, onDeleteExpense }:DashboardPageProps) {
+
+function DashboardPage({ expenses, onDeleteExpense }: DashboardPageProps) {
+  const navigate = useNavigate();
+
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState<SortBy>("newest");
+
+  function handleEditExpense(id: number) {
+    navigate(`/expenses/${id}/edit`);
+  }
+
   const categoryOptions = getCategoryOptions(expenses);
+
   const filteredExpenses = filterExpenses(expenses, {
     category: filter,
     search: searchTerm
   });
+
   const sortedExpenses = sortExpenses(filteredExpenses, sortBy);
+
   const { totalAmount, highExpenseCount, totalCategories } =
     getExpenseSummary(sortedExpenses);
 
@@ -54,7 +67,7 @@ function DashboardPage({ expenses, onDeleteExpense }:DashboardPageProps) {
 
           <select
             value={sortBy}
-            onChange={(event) => setSortBy(event.target.value)}
+            onChange={(event) => setSortBy(event.target.value as SortBy)}
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
@@ -79,7 +92,7 @@ function DashboardPage({ expenses, onDeleteExpense }:DashboardPageProps) {
           <p>No expenses found.</p>
         ) : (
           <div className="expense-grid">
-            {sortedExpenses.map((item)=> (
+            {sortedExpenses.map((item) => (
               <ExpenseCard
                 key={item.id}
                 id={item.id}
@@ -88,6 +101,7 @@ function DashboardPage({ expenses, onDeleteExpense }:DashboardPageProps) {
                 category={item.category}
                 date={item.date}
                 onDelete={onDeleteExpense}
+                onEdit={handleEditExpense}
               />
             ))}
           </div>

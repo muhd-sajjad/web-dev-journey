@@ -8,10 +8,16 @@ import ReportsPage from "./pages/ReportsPage.tsx";
 import NotFoundPage from "./pages/NotFoundPage.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
 import RegisterPage from "./pages/RegisterPage.tsx";
+import EditExpensePage from "./pages/EditExpensePage.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
 import { useAuth } from "./context/AuthContext.tsx";
 import type { Expense, ExpenseInput } from "./types/expense.ts";
-import { fetchExpenses, createExpense, deleteExpense } from "./lib/api.ts";
+import {
+  fetchExpenses,
+  createExpense,
+  deleteExpense,
+  updateExpense as updateExpenseApi
+} from "./lib/api.ts";
 
 function App() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -61,6 +67,25 @@ function App() {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to add expense";
+
+      if (message.toLowerCase().includes("401")) {
+        logout();
+      }
+
+      throw err;
+    }
+  }
+
+  async function handleUpdateExpense(id: number, updatedExpense: ExpenseInput) {
+    try {
+      const savedExpense = await updateExpenseApi(id, updatedExpense);
+
+      setExpenses((prevExpenses) =>
+        prevExpenses.map((item) => (item.id === id ? savedExpense : item))
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update expense";
 
       if (message.toLowerCase().includes("401")) {
         logout();
@@ -131,6 +156,15 @@ function App() {
           <Route
             path="add-expense"
             element={<AddExpensePage onAddExpense={handleAddExpense} />}
+          />
+          <Route
+            path="expenses/:id/edit"
+            element={
+              <EditExpensePage
+                expenses={expenses}
+                onUpdateExpense={handleUpdateExpense}
+              />
+            }
           />
           <Route path="reports" element={<ReportsPage expenses={expenses} />} />
         </Route>

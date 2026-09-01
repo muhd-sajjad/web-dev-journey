@@ -307,3 +307,12 @@ main {
 .auth-links {
   margin-top: 16px;
 }
+.edit-btn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-left: 10px;
+}

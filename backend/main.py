@@ -22,10 +22,10 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
-    allow_methods=["*"],  # Allows GET, POST, PUT, DELETE
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 security = HTTPBearer()
 def get_db():
@@ -193,8 +193,8 @@ def deleteexpense(
     db.commit()
 
     return {"message": "Expense deleted successfully"}
-@app.post("/auth/register")
-def postregister(user:schemas.UserCreate,db: Session = Depends(get_db)):
+@app.post("/auth/register", response_model=schemas.UserResponse, status_code=201)
+def postregister(user: schemas.UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(models.User).filter(models.User.email == user.email).first()
 
     if existing_user:
@@ -215,8 +215,11 @@ def postregister(user:schemas.UserCreate,db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    return new_user
-
+    return {
+        "id": new_user.id,
+        "name": new_user.name,
+        "email": new_user.email
+    }
 @app.post("/auth/login", response_model=schemas.Token)
 def postlogin(user: schemas.UserLogin,db: Session = Depends(get_db)):
     existing_user = db.query(models.User).filter(models.User.email == user.email).first()
