@@ -1,7 +1,9 @@
 function Navbar() {
   return (
     <nav className="navbar">
-      <h2>Trackly</h2>
+      <h1 data-trackly-logo>
+      Trackly
+      </h1>
       <div className="nav-right">
         <span>Dashboard</span>
         <span>Expenses</span>

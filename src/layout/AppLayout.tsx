@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.tsx";
+import DesktopPet from "../DesktopPet.tsx";
 
 function AppLayout() {
   const { user, logout } = useAuth();
@@ -12,6 +13,7 @@ function AppLayout() {
 
   return (
     <div className="app">
+      <DesktopPet />
       <nav className="navbar">
         <h2>Trackly</h2>
 

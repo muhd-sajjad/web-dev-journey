@@ -41,7 +41,7 @@ function DashboardPage({ expenses, onDeleteExpense }: DashboardPageProps) {
   return (
     <>
       <section className="hero">
-        <h1>Trackly Dashboard</h1>
+        <h1>Dashboard</h1>
         <p>Your expenses overview</p>
       </section>
 
