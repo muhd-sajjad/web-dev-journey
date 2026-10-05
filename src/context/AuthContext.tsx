@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import type { AuthUser, LoginInput, RegisterInput } from "../types/auth.ts";
 import {
   fetchCurrentUser,
+  isUnauthorized,
   loginUser,
   registerUser,
   removeToken,
@@ -48,8 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const currentUser = await fetchCurrentUser();
       setUser(currentUser);
-    } catch {
-      removeToken();
+    } catch (err) {
+      // Only discard the token if the server rejected it. If the API is just
+      // unreachable, keep it so the user stays signed in once it's back.
+      if (isUnauthorized(err)) {
+        removeToken();
+      }
       setUser(null);
     } finally {
       setLoading(false);

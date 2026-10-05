@@ -30,6 +30,7 @@ function ExpenseForm({
   const [date, setDate] = useState(initialValues?.date ?? "");
   const [errors, setErrors] = useState<ExpenseFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   function validateForm(): ExpenseFormErrors {
     const newErrors: ExpenseFormErrors = {};
@@ -76,6 +77,7 @@ function ExpenseForm({
 
     try {
       setSubmitting(true);
+      setSubmitError("");
       await onAddExpense(newExpense);
 
       setTitle("");
@@ -83,6 +85,10 @@ function ExpenseForm({
       setCategory("");
       setDate("");
       setErrors({});
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Could not save the expense"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -93,9 +99,11 @@ function ExpenseForm({
       <h2>{submitLabel === "Save Changes" ? "Edit Expense" : "Add New Expense"}</h2>
 
       <div className="field">
-        <label>Title</label>
+        <label htmlFor="expense-title">Title</label>
         <input
+          id="expense-title"
           type="text"
+          maxLength={100}
           placeholder="Enter title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -104,9 +112,12 @@ function ExpenseForm({
       </div>
 
       <div className="field">
-        <label>Amount</label>
+        <label htmlFor="expense-amount">Amount</label>
         <input
+          id="expense-amount"
           type="number"
+          min="0"
+          step="0.01"
           placeholder="Enter amount"
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
@@ -115,8 +126,9 @@ function ExpenseForm({
       </div>
 
       <div className="field">
-        <label>Category</label>
+        <label htmlFor="expense-category">Category</label>
         <select
+          id="expense-category"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
         >
@@ -131,14 +143,17 @@ function ExpenseForm({
       </div>
 
       <div className="field">
-        <label>Date</label>
+        <label htmlFor="expense-date">Date</label>
         <input
+          id="expense-date"
           type="date"
           value={date}
           onChange={(event) => setDate(event.target.value)}
         />
         {errors.date && <p className="error-text">{errors.date}</p>}
       </div>
+
+      {submitError && <p className="error-text">{submitError}</p>}
 
       <button type="submit" disabled={submitting}>
         {submitting ? "Saving..." : submitLabel}

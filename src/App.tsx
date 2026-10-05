@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import "./App.css";
 import AppLayout from "./layout/AppLayout.tsx";
@@ -16,6 +16,7 @@ import {
   fetchExpenses,
   createExpense,
   deleteExpense,
+  isUnauthorized,
   updateExpense as updateExpenseApi
 } from "./lib/api.ts";
 
@@ -25,36 +26,41 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Logs the user out when the token is rejected (HTTP 401) and returns a
+  // message that is safe to show in the UI.
+  const handleApiError = useCallback(
+    (err: unknown, fallback: string): string => {
+      if (isUnauthorized(err)) {
+        logout();
+      }
+
+      return err instanceof Error ? err.message : fallback;
+    },
+    [logout]
+  );
+
+  const loadExpenses = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      setExpenses(await fetchExpenses());
+    } catch (err) {
+      setError(handleApiError(err, "Failed to load expenses"));
+    } finally {
+      setLoading(false);
+    }
+  }, [handleApiError]);
+
   useEffect(() => {
     if (!user) {
       setExpenses([]);
       setLoading(false);
       setError("");
-      document.title = "Trackly";
       return;
     }
 
-    async function loadExpenses() {
-      try {
-        setLoading(true);
-        setError("");
-        const data = await fetchExpenses();
-        setExpenses(data);
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to load expenses";
-        setError(message);
-
-        if (message.toLowerCase().includes("401")) {
-          logout();
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadExpenses();
-  }, [user, logout]);
+    void loadExpenses();
+  }, [user, loadExpenses]);
 
   useEffect(() => {
     document.title = user ? `Trackly (${expenses.length} expenses)` : "Trackly";
@@ -63,15 +69,9 @@ function App() {
   async function handleAddExpense(newExpense: ExpenseInput) {
     try {
       const savedExpense = await createExpense(newExpense);
-      setExpenses((prevExpenses) => [savedExpense, ...prevExpenses]);
+      setExpenses((prev) => [savedExpense, ...prev]);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to add expense";
-
-      if (message.toLowerCase().includes("401")) {
-        logout();
-      }
-
+      handleApiError(err, "Failed to add expense");
       throw err;
     }
   }
@@ -79,18 +79,11 @@ function App() {
   async function handleUpdateExpense(id: number, updatedExpense: ExpenseInput) {
     try {
       const savedExpense = await updateExpenseApi(id, updatedExpense);
-
-      setExpenses((prevExpenses) =>
-        prevExpenses.map((item) => (item.id === id ? savedExpense : item))
+      setExpenses((prev) =>
+        prev.map((item) => (item.id === id ? savedExpense : item))
       );
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to update expense";
-
-      if (message.toLowerCase().includes("401")) {
-        logout();
-      }
-
+      handleApiError(err, "Failed to update expense");
       throw err;
     }
   }
@@ -98,17 +91,9 @@ function App() {
   async function handleDeleteExpense(id: number) {
     try {
       await deleteExpense(id);
-      setExpenses((prevExpenses) =>
-        prevExpenses.filter((item) => item.id !== id)
-      );
+      setExpenses((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to delete expense";
-
-      if (message.toLowerCase().includes("401")) {
-        logout();
-      }
-
+      handleApiError(err, "Failed to delete expense");
       throw err;
     }
   }
@@ -133,6 +118,12 @@ function App() {
     return (
       <div className="app">
         <p className="error-text">Error: {error}</p>
+        <button type="button" onClick={() => void loadExpenses()}>
+          Retry
+        </button>{" "}
+        <button type="button" onClick={logout}>
+          Log out
+        </button>
       </div>
     );
   }

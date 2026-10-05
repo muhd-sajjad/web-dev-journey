@@ -6,8 +6,24 @@ import type {
   TokenResponse
 } from "../types/auth.ts";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000"
+).replace(/\/$/, "");
 const TOKEN_KEY = "trackly-token";
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+export function isUnauthorized(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 401;
+}
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -21,110 +37,116 @@ export function removeToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-function getAuthHeaders(includeJson = false): HeadersInit {
+// FastAPI returns `detail` as a string for HTTP errors and as a list of
+// { msg, loc } objects for validation errors (422).
+function extractMessage(data: unknown, status: number): string {
+  const detail = (data as { detail?: unknown } | null)?.detail;
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => (item as { msg?: unknown })?.msg)
+      .filter((msg): msg is string => typeof msg === "string");
+
+    if (messages.length > 0) {
+      return messages.join(". ");
+    }
+  }
+
+  return `Request failed (HTTP ${status})`;
+}
+
+interface RequestOptions {
+  method?: string;
+  body?: unknown;
+  auth?: boolean;
+}
+
+async function request<T>(
+  path: string,
+  { method = "GET", body, auth = true }: RequestOptions = {}
+): Promise<T> {
+  const headers: Record<string, string> = {};
   const token = getToken();
 
-  return {
-    ...(includeJson ? { "Content-Type": "application/json" } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
-}
-
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    let message = `HTTP error: ${response.status}`;
-
-    try {
-      const errorData = await response.json();
-      if (errorData?.detail) {
-        message = errorData.detail;
-      }
-    } catch {
-      //
-    }
-
-    throw new Error(message);
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
   }
 
-  return response.json() as Promise<T>;
-}
+  if (auth && token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
-export async function registerUser(data: RegisterInput): Promise<AuthUser> {
-  const response = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
+  const init: RequestInit = { method, headers };
 
-  return handleResponse<AuthUser>(response);
-}
+  if (body !== undefined) {
+    init.body = JSON.stringify(body);
+  }
 
-export async function loginUser(data: LoginInput): Promise<TokenResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
+  let response: Response;
 
-  return handleResponse<TokenResponse>(response);
-}
-
-export async function fetchCurrentUser(): Promise<AuthUser> {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    headers: getAuthHeaders()
-  });
-
-  return handleResponse<AuthUser>(response);
-}
-
-export async function fetchExpenses(): Promise<Expense[]> {
-  const response = await fetch(`${API_BASE_URL}/expenses`, {
-    headers: getAuthHeaders()
-  });
-
-  return handleResponse<Expense[]>(response);
-}
-
-export async function createExpense(expense: ExpenseInput): Promise<Expense> {
-  const response = await fetch(`${API_BASE_URL}/expenses`, {
-    method: "POST",
-    headers: getAuthHeaders(true),
-    body: JSON.stringify(expense)
-  });
-
-  return handleResponse<Expense>(response);
-}
-
-export async function deleteExpense(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/expenses/${id}`, {
-    method: "DELETE",
-    headers: getAuthHeaders()
-  });
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, init);
+  } catch {
+    throw new ApiError(
+      "Cannot reach the server. Check your connection and try again.",
+      0
+    );
+  }
 
   if (!response.ok) {
-    let message = `HTTP error: ${response.status}`;
+    let data: unknown = null;
 
     try {
-      const errorData = await response.json();
-      if (errorData?.detail) {
-        message = errorData.detail;
-      }
+      data = await response.json();
     } catch {
-      //
+      // response had no JSON body
     }
 
-    throw new Error(message);
+    throw new ApiError(extractMessage(data, response.status), response.status);
   }
+
+  return (await response.json()) as T;
 }
-export async function updateExpense(
+
+export function registerUser(data: RegisterInput): Promise<AuthUser> {
+  return request<AuthUser>("/auth/register", {
+    method: "POST",
+    body: data,
+    auth: false
+  });
+}
+
+export function loginUser(data: LoginInput): Promise<TokenResponse> {
+  return request<TokenResponse>("/auth/login", {
+    method: "POST",
+    body: data,
+    auth: false
+  });
+}
+
+export function fetchCurrentUser(): Promise<AuthUser> {
+  return request<AuthUser>("/auth/me");
+}
+
+export function fetchExpenses(): Promise<Expense[]> {
+  return request<Expense[]>("/expenses");
+}
+
+export function createExpense(expense: ExpenseInput): Promise<Expense> {
+  return request<Expense>("/expenses", { method: "POST", body: expense });
+}
+
+export function updateExpense(
   id: number,
   expense: ExpenseInput
 ): Promise<Expense> {
-  const response = await fetch(`${API_BASE_URL}/expenses/${id}`, {
-    method: "PUT",
-    headers: getAuthHeaders(true),
-    body: JSON.stringify(expense)
-  });
+  return request<Expense>(`/expenses/${id}`, { method: "PUT", body: expense });
+}
 
-  return handleResponse<Expense>(response);
+export async function deleteExpense(id: number): Promise<void> {
+  await request<unknown>(`/expenses/${id}`, { method: "DELETE" });
 }

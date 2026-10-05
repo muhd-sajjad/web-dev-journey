@@ -60,7 +60,8 @@ export function sortExpenses(expenses:Expense[] = [], sortBy = "newest") {
 }
 
 export function getExpenseSummary(expenses:Expense[] = []) {
-  const totalAmount = expenses.reduce((sum, item) => sum + item.amount, 0);
+  const totalAmount =
+    Math.round(expenses.reduce((sum, item) => sum + item.amount, 0) * 100) / 100;
   const highExpenseCount = expenses.filter((item) => item.amount > 100).length;
   const totalCategories = new Set(expenses.map((item) => item.category)).size;
 

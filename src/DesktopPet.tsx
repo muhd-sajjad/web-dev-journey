@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 
 const SPRITE = "https://cdn.jsdelivr.net/gh/adryd325/oneko.js@main/oneko.gif";
 
-const SPRITE_SETS: Record<string, number[][]> = {
+type Frame = [number, number];
+
+const SPRITE_SETS: Record<string, Frame[]> = {
   idle: [[-3, -3]],
   alert: [[-7, -3]],
   scratch: [[-5, 0], [-6, 0], [-7, 0]],
@@ -56,7 +58,10 @@ function DesktopPet() {
 
     function setSprite(name: string, frame: number) {
       const set = SPRITE_SETS[name];
-      const [x, y] = set[frame % set.length];
+      if (!set) return;
+      const sprite = set[frame % set.length];
+      if (!sprite) return;
+      const [x, y] = sprite;
       el!.style.backgroundPosition = `${x * 32}px ${y * 32}px`;
     }
 
@@ -88,7 +93,7 @@ function DesktopPet() {
 
         const angle = Math.atan2(dy, dx);
         const dirs = ["E", "SE", "S", "SW", "W", "NW", "N", "NE"];
-        const dir = dirs[Math.round(((angle + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 4)) % 8];
+        const dir = dirs[Math.round(((angle + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 4)) % 8] ?? "E";
 
         setSprite(dir, frameCount % 2);
 
