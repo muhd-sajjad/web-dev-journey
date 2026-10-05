@@ -21,7 +21,7 @@ A personal expense tracker with user accounts, filtering/sorting, and spending r
 
 ```
 backend/   FastAPI app (main.py, auth.py, models.py, schemas.py, tests/)
-src/       React app (pages, components, context, lib/api.ts)
+frontend/  React app (src, public, package.json, vite.config.js)
 ```
 
 ## Run locally
@@ -41,11 +41,12 @@ uvicorn main:app --reload
 
 API runs on http://127.0.0.1:8000 (docs at `/docs`).
 
-**2. Frontend** (new terminal, project root)
+**2. Frontend** (new terminal)
 
 ```bash
+cd frontend
 npm install
-cp .env.example .env             # VITE_API_URL, must be in the root
+cp .env.example .env             # VITE_API_URL
 npm run dev
 ```
 
@@ -69,6 +70,7 @@ Never commit a real `.env`. Only the `.env.example` files belong in git.
 
 ```bash
 cd backend && pytest             # API tests (uses a throwaway SQLite DB)
+cd ../frontend
 npm run lint
 npm run typecheck
 npm run build
@@ -87,7 +89,7 @@ CI runs lint, build and the backend tests on every push (`.github/workflows/ci.y
 4. Check `https://<your-api>/health`.
 
 **Frontend (Vercel):**
-1. Import the repo. Defaults are right (build `npm run build`, output `dist`).
+1. Import the repo. Set the Framework Preset to Vite and Root Directory to `frontend`.
 2. Set `VITE_API_URL` to the API URL. `vercel.json` already handles React Router refreshes.
 3. Put the final Vercel URL into the API's `CORS_ORIGINS` and redeploy the API.
 
