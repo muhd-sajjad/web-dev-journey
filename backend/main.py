@@ -32,6 +32,7 @@ DEFAULT_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://trackly-u.netlify.app"
 ]
 cors_origins = [
     origin.strip().rstrip("/")
